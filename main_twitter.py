@@ -26,8 +26,7 @@ def main():
     except KeyboardInterrupt:
         logger.info("Application stopped by user")
     except Exception as e:
-        logger.error(f"Fatal error: {str(e)}")
-        raise
+        logger.error(f"Unable to proceed due to: {str(e)}")
 
 if __name__ == "__main__":
     main()

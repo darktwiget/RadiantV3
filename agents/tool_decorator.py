@@ -1,6 +1,11 @@
 import inspect
 from typing import Callable, Dict, Any
+import sys
+from pathlib import Path
 
+
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
 
 def tool(description: str):
     """
@@ -28,19 +33,19 @@ def tool(description: str):
                 if param_type.default == inspect._empty
             ]
         }
-        
+
         async def wrapper(args: Dict[str, Any], agent_context: Any):
             # Remove agent_context from args if it exists
             if "agent_context" in args:
-                args["agent_context"] = agent_context   
+                args["agent_context"] = agent_context
             result = await func(**args) if inspect.iscoroutinefunction(func) else func(**args)
             return result
-            
+
         wrapper.name = func.name
         wrapper.description = func.description
         wrapper.args_schema = func.args_schema
         wrapper.original = func
-        
+
         return wrapper
     return decorator
 

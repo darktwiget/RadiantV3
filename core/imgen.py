@@ -21,7 +21,7 @@ logger.info("Environment variables reloaded image generation")
 HEURIST_BASE_URL = os.getenv("HEURIST_BASE_URL")
 HEURIST_API_KEY = os.getenv("HEURIST_API_KEY")
 SEQUENCER_API_ENDPOINT = "http://sequencer.heurist.xyz/submit_job"
-PROMPT_MODEL_ID = "mistralai/mixtral-8x7b-instruct"
+PROMPT_MODEL_ID = "mistralai/mixtral-8x22b-instruct"
 
 AVAILABLE_IMAGE_MODELS = [
     "AnimagineXL",
@@ -37,8 +37,8 @@ IMAGE_MODEL_ID = os.getenv("IMAGE_MODEL_ID") or random.choice(AVAILABLE_IMAGE_MO
 IMAGE_SETTINGS = {
     "width": 1024,
     "height": 1024,
-    "num_iterations": 30,
-    "guidance_scale": 3,
+    "num_iterations": 60,
+    "guidance_scale": 4,
     "deadline": 60
 }
 
@@ -92,8 +92,8 @@ async def generate_image_smartgen(prompt: str) -> dict:
                 width=IMAGE_SETTINGS["width"],
                 height=IMAGE_SETTINGS["height"],
                 stylization_level=4,
-                detail_level=5,
-                color_level=5,
+                detail_level=9,
+                color_level=7,
                 lighting_level=4,
                 quality="high"
             )
@@ -168,10 +168,10 @@ async def generate_image_with_retry_smartgen(prompt: str, max_retries: int = 3, 
                 return result
         except Exception as e:
             logger.warning(f"Image generation attempt {attempt + 1} failed: {str(e)}")
-        
+
         if attempt < max_retries - 1:
             time.sleep(delay)
-    
+
     logger.error(f"Image generation failed after {max_retries} attempts")
     return None
 

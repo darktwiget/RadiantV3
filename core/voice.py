@@ -7,10 +7,16 @@ from openai import OpenAI
 from pathlib import Path
 import hashlib
 import random
+import dotenv
+
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+dotenv.load_dotenv(override=True)
+
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def transcribe_audio(file_path):

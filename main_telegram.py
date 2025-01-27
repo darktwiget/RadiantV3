@@ -1,47 +1,81 @@
 import logging
-from interfaces.telegram import TelegramAgent
+import httpx
+from httpx import AsyncClient
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from typing import Any
+
+from interfaces.telegram import TelegramAgent  # Update handler logic in this module if necessary
+# Removed AsyncHTTPBot usage, replaced with Application
 from agents.core_agent import CoreAgent
 import dotenv
+from typing import Optional
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-def run_telegram(telegram_agent):
-    """Run the Telegram agent"""
-    try:
-        logger.info("Starting Telegram agent...")
-        telegram_agent.run()
-    except Exception as e:
-        logger.error(f"Telegram agent error: {str(e)}")
+# Removed the run_telegram method since we're replacing it with Application.run_polling()
 
-def main():
+class HTTPXRequest:
+    def __init__(self):
+        self.client = AsyncClient()
+    async def do_request(self, method: str, url: str, **kwargs: Any):
+        logger.info(f"Performing {method} request to {url} with params: {kwargs}")
+        return await self.client.request(method, url, **kwargs)
+    async def initialize(self):
+        logger.info("Initializing HTTPXRequest...")
+    async def shutdown(self):
+        logger.info("Shutting down HTTPXRequest...")
+        await self.client.aclose()
+import asyncio
+class MyHTTPXRequest(HTTPXRequest):
+    def __init__(self):
+        super().__init__()
+        self.client = AsyncClient()
+    async def do_request(self, method: str, url: str, **kwargs: Any):
+        return await self.client.request(method, url, **kwargs)
+    async def initialize(self):
+        logger.info("MyHTTPXRequest initialization logic (if any).")
+    async def shutdown(self):
+        logger.info("Shutting down MyHTTPXRequest...")
+        await self.client.aclose()
+
+async def main():
     """
     Main entry point for the Heuman Agent Framework.
     Demonstrates both shared and standalone usage.
     """
+    logger.info("Loading environment variables...")
+    dotenv.load_dotenv()
+
+    core_agent = CoreAgent()
+    httpx_request = MyHTTPXRequest()
+    application = Application.builder().token("TELEGRAM_BOT_TOKEN").build()
+
+    async def start(update, context):
+        await update.message.reply_text("Hello! I'm your bot.")
+
+
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, core_agent.handle_message))
+
     try:
-        # Load environment variables
-        dotenv.load_dotenv()
-        
-        # Example 1: Standalone agent (default)
-        #telegram_agent = TelegramAgent()  # Uses its own CoreAgent instance
-        
-        # Example 2: Shared core agent (commented out)
-        core_agent = CoreAgent()
-        telegram_agent = TelegramAgent(core_agent)  # Uses shared core_agent
-        
-        # Run the agent
-        run_telegram(telegram_agent)
-        
+        await httpx_request.initialize()
+        logger.info("HTTPXRequest initialized successfully.")
+        logger.info("Starting Telegram bot application...")
+        await application.run_polling()
     except KeyboardInterrupt:
-        logger.info("Application stopped by user")
+        logger.warning("Application interrupted by the user.")
     except Exception as e:
-        logger.error(f"Fatal error: {str(e)}")
+        logger.critical("Fatal error occurred", exc_info=True)
         raise
+    finally:
+        logger.info("Cleaning up resources...")
+        await httpx_request.shutdown()
+        logger.info("Cleanup complete.")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

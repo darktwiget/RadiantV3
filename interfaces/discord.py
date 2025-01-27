@@ -19,26 +19,39 @@ dotenv.load_dotenv()
 
     
 class DiscordAgent(CoreAgent):
-    def __init__(self):
+    def __init__(self, loop: Optional[Any] = None):
         super().__init__()
-        # Define intents to allow the bot to read message content
+        self.loop = loop or asyncio.get_event_loop()
+
+        # Define Discord intents and initialize the bot
+
         intents = discord.Intents.default()
         intents.messages = True
         intents.message_content = True
+        intents.typing = False
+        intents.presences = False
 
-        self.bot = commands.Bot(command_prefix="!", intents=intents)
+
+        self.bot = commands.Bot(command_prefix=os.getenv("COMMAND_PREFIX", "!"), intents=intents)
         self.token = os.getenv("DISCORD_TOKEN")
         
         self.setup_handlers()
 
-    def setup_handlers(self):
+    def setup_handlers(self) -> None:
         @self.bot.event
         async def on_ready():
-            print(f"Logged in as {self.bot.user}")
+            logger.info(f"Bot is ready and logged in as {self.bot.user}")
 
-        @self.bot.command()
-        async def hello(ctx):
-            await ctx.send("Hello! How can I help you?")
+        @self.bot.hybrid_command(name="hello", with_app_command=True, description="Say hello to the bot!")
+
+        async def hello(ctx: commands.Context):
+            await ctx.send(f"Hello {ctx.author.display_name}! How can I help you?")
+
+        @self.bot.command(name="uptime", help="Check bot uptime")
+        async def uptime(ctx):
+            current_time = datetime.utcnow()
+            uptime_duration = current_time - self.start_time
+            await ctx.send(f"Bot uptime: {uptime_duration}")
 
         @self.bot.event
         async def on_message(message):
@@ -48,9 +61,10 @@ class DiscordAgent(CoreAgent):
 
             try:
                 # Get user message
-                user_message = message.content.lower()
+                user_message = message.content.strip().lower()
 
-                # Handle message using core agent functionality
+                text_response, image_url, extra_data = await self.handle_message(user_message)
+                logger.debug(f"Extra data returned from handle_message: {extra_data}")
                 text_response, image_url, _ = await self.handle_message(user_message)
 
                 if image_url:
@@ -60,10 +74,13 @@ class DiscordAgent(CoreAgent):
                 elif text_response:
                     await message.channel.send(text_response)
                 else:
-                    await message.channel.send("Sorry, I couldn't process your message.")
+                    await message.channel.send("Sorry, I couldn't process your message.", delete_after=10)
 
+            except discord.DiscordException as e:
+                logger.error(f"Discord error occurred: {str(e)}")
+                await message.channel.send("A Discord-related error occurred.")
             except Exception as e:
-                logger.error(f"Message handling failed: {str(e)}")
+                logger.error(f"Unexpected error: {str(e)}")
                 await message.channel.send("Sorry, I encountered an error processing your message.")
 
             # Ensure other commands still work
@@ -72,7 +89,7 @@ class DiscordAgent(CoreAgent):
         # Command: Simple echo function
         @self.bot.command()
         async def echo(ctx, *, message: str):
-            await ctx.send(f"You said: {message}")
+            await ctx.send(f"You said: {message}", allowed_mentions=discord.AllowedMentions.none())
 
-    def run(self):
+    def run(self) -> None:
         self.bot.run(self.token)

@@ -5,8 +5,27 @@ import json
 from .tool_decorator import get_tool_schemas
 from .tool_box import ToolBox
 from .tool_decorator_example import DECORATED_TOOLS_EXAMPLES
-
+from interfaces.xrpl_integration import create_wallet, get_account_balance, send_payment, get_transaction_history
 logger = logging.getLogger(__name__)
+
+class XRPLAgent:
+    """A class that wraps XRPL operations for agent usage."""
+
+    def create_new_wallet(self):
+        """Create a new XRP wallet."""
+        return create_wallet()
+
+    def fetch_balance(self, address):
+        """Fetch balance for a specified XRP account."""
+        return get_account_balance(address)
+
+    def process_payment(self, sender_seed, recipient_address, amount):
+        """Process payment on XRP Ledger."""
+        return send_payment(sender_seed, recipient_address, amount)
+
+    def get_transaction_history(self, address):
+        """Retrieve an account's transaction history from the Ledger."""
+        return get_transaction_history(address)
 
 class Tools(ToolBox):
     def __init__(self):
